@@ -1,20 +1,20 @@
 import ADMIN from './admin.html';
 import CSS from './style.css';
 const S=[
-['skin','Skin Care','<circle cx="12" cy="12" r="8"/><path d="M9 10h.01M15 10h.01M9 15c1.5 1.5 4.5 1.5 6 0"/>'],
-['hair','Hair Care','<path d="M6 20c0-6 2-14 6-16 4 2 6 10 6 16M9 20c0-4 1-8 3-11"/>'],
-['body','Body Care','<circle cx="12" cy="5" r="2"/><path d="M12 8v7M7 11l5-3 5 3M9 21l3-6 3 6"/>'],
-['mind','Mental Health','<path d="M12 4a5 5 0 0 0-5 5c-2 1-2 5 0 6 0 3 3 5 5 5s5-2 5-5c2-1 2-5 0-6a5 5 0 0 0-5-5zM12 4v16"/>'],
-['food','Food & Nutrition','<path d="M12 6c-4-3-8 0-7 5s4 9 7 8c3 1 6-3 7-8s-3-8-7-5zM12 6c0-2 1-3 3-3"/>'],
-['fitness','Fitness','<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>'],
-['sleep','Sleep & Rest','<path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10z"/>'],
-['fashion','Fashion & Style','<path d="M8 4l-5 4 3 3 2-1v10h8V10l2 1 3-3-5-4a4 4 0 0 1-8 0z"/>'],
+['skin','Skin Care','<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/>'],
+['hair','Hair Care','<rect x="3" y="7" width="18" height="5" rx="1.5"/><path d="M6 12v6M9.5 12v6M13 12v6M16.5 12v6"/>'],
+['body','Body Care','<path d="M9 3h6v3H9zM8 6h8v3l1 2v8a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-8l1-2z"/><path d="M10 14h4"/>'],
+['mind','Mental Health','<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 4 3 3 0 0 0 2 4 3 3 0 0 0 3 5 2 2 0 0 0 3-1V5a2 2 0 0 0-3-1z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 4 3 3 0 0 1-2 4 3 3 0 0 1-3 5 2 2 0 0 1-3-1"/>'],
+['food','Food & Nutrition','<path d="M12 7c-2-2-7-1-7 5 0 4 3 9 5 9 1 0 1-.5 2-.5s1 .5 2 .5c2 0 5-5 5-9 0-6-5-7-7-5z"/><path d="M12 7c0-2 1-4 3-4"/>'],
+['fitness','Fitness','<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>'],
+['sleep','Sleep & Rest','<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/><path d="M17 4v3M15.5 5.5h3"/>'],
+['fashion','Fashion & Style','<path d="M12 8a2.5 2.5 0 1 0-2.5-2.5"/><path d="M12 8v2L3 16a1.5 1.5 0 0 0 1 2.5h16a1.5 1.5 0 0 0 1-2.5l-9-6"/>'],
 ['men',"Men's Lifestyle",'<circle cx="10" cy="14" r="5"/><path d="M14 10l6-6M15 4h5v5"/>'],
 ['women',"Women's Lifestyle",'<circle cx="12" cy="9" r="5"/><path d="M12 14v8M9 18h6"/>']];
 const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const J=(o,s=200)=>new Response(JSON.stringify(o),{status:s,headers:{'content-type':'application/json'}});
 const nm=k=>(S.find(x=>x[0]==k)||[0,k])[1];
-const ic=k=>`<span class="ic"><svg viewBox="0 0 24 24">${(S.find(x=>x[0]==k)||[0,0,''])[2]}</svg></span>`;
+const ic=k=>`<span class="ic"><svg class="si" viewBox="0 0 24 24">${(S.find(x=>x[0]==k)||[0,0,''])[2]}</svg></span>`;
 const card=a=>`<a class="card" href="/a/${a.slug}"><img loading="lazy" src="${E(a.img||'/ph.svg')}" alt="${E(a.title)}"><div class="b"><span class="tag">${nm(a.sec)}</span><h3>${E(a.title)}</h3><p>${E((a.body||'').slice(0,110))}…</p></div></a>`;
 const pcard=p=>`<div class="pc"><a class="pi" href="${E(p.link)}" target="_blank" rel="sponsored noopener"><img loading="lazy" src="${E(p.img||'/ph.svg')}" alt="${E(p.name)}"></a><div class="pb"><h4>${E(p.name)}</h4><div class="pp">${E(p.price)}</div><a class="buy" href="${E(p.link)}" target="_blank" rel="sponsored noopener">Buy Now</a></div></div>`;
 const pager=(pg,tot,per,base)=>{const n=Math.ceil(tot/per);if(n<2)return'';return`<div class="pg">${Array.from({length:n},(_,i)=>`<a class="${i+1==pg?'on':''}" href="${base}?page=${i+1}">${i+1}</a>`).join('')}</div>`};
