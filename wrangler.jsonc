@@ -3,6 +3,6 @@
   "main": "src/worker.js",
   "compatibility_date": "2025-01-01",
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
-  "d1_databases": [{ "binding": "DB", "database_name": "lifeolozy-db", "database_id": "PASTE_YOUR_D1_ID_HERE" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "lifeolozy-db", "database_id": "30e82809-eeb6-4b9f-ac68-de6186b010e1" }],
   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "lifeolozy-images" }]
 }
