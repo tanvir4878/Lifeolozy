@@ -28,7 +28,7 @@ const sp=k=>si((S.find(x=>x[0]==k)||[0,0,''])[2]);
 async function view(env,u,o,body){
  const s=Object.fromEntries((await all(env,'SELECT k,v FROM settings')).map(x=>[x.k,x.v]));
  body=body.replace('<!--INART-->',s.inart||'');
- const html=`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${E(o.t)}</title><meta name="description" content="${E(o.d)}"><link rel="canonical" href="${u.origin}${o.c||u.pathname}"><meta property="og:title" content="${E(o.t)}"><meta property="og:description" content="${E(o.d)}"><meta property="og:type" content="website">${o.i?`<meta property="og:image" content="${E(o.i)}">`:''}<meta name="theme-color" content="#046e5b"><link rel="stylesheet" href="/style.css">${o.ld?`<script type="application/ld+json">${JSON.stringify(o.ld).replace(/</g,'\\u003c')}</script>`:''}${s.head||''}<script>document.documentElement.dataset.theme=localStorage.lzt||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')</script></head><body>
+ const html=`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${E(o.t)}</title><meta name="description" content="${E(o.d)}"><link rel="canonical" href="${u.origin}${o.c||u.pathname}"><meta property="og:title" content="${E(o.t)}"><meta property="og:description" content="${E(o.d)}"><meta property="og:type" content="website">${o.i?`<meta property="og:image" content="${E(o.i)}">`:''}${o.k?`<meta name="keywords" content="${E(o.k)}">`:''}${o.n?'<meta name="robots" content="noindex">':'<meta name="robots" content="index,follow,max-image-preview:large">'}<meta name="theme-color" content="#046e5b"><link rel="stylesheet" href="/style.css">${o.ld?`<script type="application/ld+json">${JSON.stringify(o.ld).replace(/</g,'\\u003c')}</script>`:''}${s.head||''}<script>document.documentElement.dataset.theme=localStorage.lzt||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')</script></head><body>
 <div class="top">Free expert lifestyle guides for men &amp; women · Updated daily</div>
 <header><div class="w nav"><a href="/" class="logo">Life<b>olozy</b></a><form class="sf" action="/search"><input name="q" placeholder="Search skin, hair, fitness, mind…" aria-label="Search"><button aria-label="Search">${si(SV.search)}</button></form><div class="tools"><button class="ib" id="dm" aria-label="Dark mode">${si(SV.moon)}</button><button class="ib" id="ham" aria-label="Menu">${si(SV.menu)}</button></div></div>
 <div class="cats"><div class="w">${S.map(x=>`<a href="/c/${x[0]}">${sp(x[0])}${x[1]}</a>`).join('')}</div></div></header>
@@ -67,33 +67,56 @@ async function cat(env,u,k){
  return view(env,u,{t:`${nm(k)} Tips & Guides | Lifeolozy`,d:`Expert ${nm(k).toLowerCase()} topics, tips and product picks for men and women.`},
  `<section class="hero sm"><div class="w">${ic(k)}<h1>${nm(k)}</h1><p>All topics about ${nm(k).toLowerCase()}.</p></div></section><div class="w"><div class="grid">${L.map(card).join('')||'<p class="mu">No topics yet.</p>'}</div>${pager(pg,tot,per,'/c/'+k)}</div>`);
 }
+const STOP=new Set('a an the of to and or for in on with how what is are your you my best top tips guide why when do does can i it at by from as be this that'.split(' '));
+const words=t=>String(t).toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w&&!STOP.has(w));
+const sents=b=>(String(b).replace(/\s+/g,' ').match(/[^.!?]+[.!?]/g)||[]).map(x=>x.trim());
+const pick=(b,q,n=2)=>{const qs=new Set(words(q));return sents(b).map(s=>[s,words(s).filter(w=>qs.has(w)).length]).filter(x=>x[1]>0).sort((x,y)=>y[1]-x[1]).slice(0,n).map(x=>x[0]).join(' ')};
+function kws(a){const w=words(a.title),b=w.join(' '),s=nm(a.sec).toLowerCase();return[...new Set([a.title.toLowerCase().replace(/\?$/,''),b,b+' tips',b+' at home','best '+b,'how to '+b,s+' tips',s,...w.filter(x=>x.length>3)])].filter(Boolean).slice(0,12)}
+function autoFaq(a){const T=a.title.replace(/\?$/,''),h=a.sec!='fashion',B=a.body;
+ return[[`What should I know about ${T}?`,sents(B).slice(0,2).join(' ')],
+ [`How long does it take to see results with ${T}?`,pick(B,'results weeks days time long')||'Results vary from person to person. Most people notice changes after about 4 to 8 weeks of consistent habits.'],
+ [`What are the most common mistakes with ${T}?`,pick(B,'mistakes avoid wrong')||'The most common mistakes are being inconsistent, copying trends without checking what suits you, and ignoring basics like sleep and water.'],
+ [`Is ${T} safe for everyone?`,pick(B,'safe consult doctor allergy')||'This is general information. Check product labels and consult a qualified professional if you have a medical condition, allergies, or are pregnant.'],
+ [h?`When should I see a doctor or specialist about ${T}?`:`Which products are best for ${T}?`,h?(pick(B,'doctor specialist professional severe')||'See a licensed professional if the problem is severe, sudden, painful or keeps getting worse despite a consistent routine.'):'Choose products that match your needs, budget and style. See the recommended products at the end of this page.']].filter(x=>x[1])}
 async function art(env,u,slug){
  const a=await env.DB.prepare('SELECT * FROM articles WHERE slug=?').bind(slug).first();
  if(!a)return new Response('Not found',{status:404});
+ const has=!!(a.body&&a.body.trim());
  let faq=[];try{faq=JSON.parse(a.faq||'[]')}catch{}
- const P=await all(env,'SELECT * FROM products WHERE sec=? ORDER BY id DESC LIMIT 10',a.sec);
+ if(!faq.length&&has)faq=autoFaq(a);
+ let P=[];
+ try{P=await all(env,'SELECT * FROM products WHERE aid=? ORDER BY id DESC LIMIT 10',a.id);
+  if(P.length<10)P=P.concat(await all(env,'SELECT * FROM products WHERE sec=? AND (aid IS NULL OR aid!=?) ORDER BY id DESC LIMIT ?',a.sec,a.id,10-P.length))}
+ catch{P=await all(env,'SELECT * FROM products WHERE sec=? ORDER BY id DESC LIMIT 10',a.sec)}
  const R=await all(env,'SELECT * FROM articles WHERE sec=? AND id!=? ORDER BY created DESC LIMIT 3',a.sec,a.id);
- const d=a.body.replace(/\s+/g,' ').slice(0,155);
- const ld=[{'@context':'https://schema.org','@type':'Article',headline:a.title,image:a.img?new URL(a.img,u.origin).href:undefined,datePublished:new Date(a.created).toISOString(),author:{'@type':'Organization',name:'Lifeolozy'},publisher:{'@type':'Organization',name:'Lifeolozy'}}];
+ const k=kws(a),T=a.title.length>58?a.title.slice(0,57)+'…':a.title;
+ const d=has&&a.body.trim().length>=60?a.body.replace(/\s+/g,' ').slice(0,155):`Learn about ${a.title}: tips, expert guidance, FAQs and recommended products on Lifeolozy.`;
+ const img=a.img?new URL(a.img,u.origin).href:undefined;
+ const ld=[{'@context':'https://schema.org','@type':'Article',headline:a.title,description:d,image:img,keywords:k.join(', '),articleSection:nm(a.sec),wordCount:a.body?a.body.split(/\s+/).length:0,mainEntityOfPage:u.origin+u.pathname,datePublished:new Date(a.created).toISOString(),dateModified:new Date(a.created).toISOString(),author:{'@type':'Organization',name:'Lifeolozy'},publisher:{'@type':'Organization',name:'Lifeolozy'}},
+  {'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[['Home','/'],[nm(a.sec),'/c/'+a.sec],[a.title,u.pathname]].map((x,i)=>({'@type':'ListItem',position:i+1,name:x[0],item:u.origin+x[1]}))}];
  if(faq.length)ld.push({'@context':'https://schema.org','@type':'FAQPage',mainEntity:faq.map(f=>({'@type':'Question',name:f[0],acceptedAnswer:{'@type':'Answer',text:f[1]}}))});
- return view(env,u,{t:a.title+' | Lifeolozy',d,i:a.img?new URL(a.img,u.origin).href:'',ld},
- `<div class="w"><article class="art"><nav class="bc"><a href="/">Home</a> › <a href="/c/${a.sec}">${nm(a.sec)}</a></nav><h1>${E(a.title)}</h1><p class="mu">${new Date(a.created).toDateString()} · ${Math.max(1,Math.round(a.body.split(/\s+/).length/200))} min read</p><img class="hi" src="${E(a.img||'/ph.svg')}" alt="${E(a.title)}"><div class="ad"><!--INART--></div>
- <div class="txt">${a.body.split(/\n{2,}/).map(p=>`<p>${E(p)}</p>`).join('')}</div>
- ${P.length?`<h2 class="t">Recommended Products</h2><div class="prow">${P.map(pcard).join('')}</div>`:''}
- ${faq.length?`<h2 class="t">Frequently Asked Questions</h2>${faq.map(f=>`<details><summary>${E(f[0])}</summary><p>${E(f[1])}</p></details>`).join('')}`:''}</article>
- ${R.length?`<h2 class="t">Related Reading</h2><div class="grid">${R.map(card).join('')}</div>`:''}</div>`);
+ return view(env,u,{t:T+' | Lifeolozy',d,i:img||'',ld,k:k.join(', '),n:!has},
+ `<div class="w"><article class="art"><nav class="bc"><a href="/">Home</a> › <a href="/c/${a.sec}">${nm(a.sec)}</a> › ${E(a.title)}</nav><h1>${E(a.title)}</h1><p class="mu">${new Date(a.created).toDateString()} · ${Math.max(1,Math.round((a.body||'').split(/\s+/).length/200))} min read</p><img class="hi" src="${E(a.img||'/ph.svg')}" alt="${E(a.title)}"><div class="ad"><!--INART--></div>
+ <div class="txt">${has?a.body.split(/\n{2,}/).map(p=>`<p>${E(p)}</p>`).join(''):'<p class="mu">Detailed guide coming soon.</p>'}</div>
+ ${faq.length?`<h2 class="t">Frequently Asked Questions</h2>${faq.map(f=>`<details><summary>${E(f[0])}</summary><p>${E(f[1])}</p></details>`).join('')}`:''}
+ <h2 class="t">Related Keywords</h2><div class="kw">${k.map(x=>`<a href="/search?q=${encodeURIComponent(x)}">${E(x)}</a>`).join('')}</div></article>
+ ${R.length?`<h2 class="t">Related Reading</h2><div class="grid">${R.map(card).join('')}</div>`:''}
+ ${P.length?`<h2 class="t">Recommended Products for ${E(a.title)}</h2><div class="prow">${P.map(pcard).join('')}</div>`:''}</div>`);
 }
 async function api(req,env,u){
  const p=u.pathname,m=req.method;
  if(!env.ADMIN_PASSWORD)return J({error:'ADMIN_PASSWORD secret not set'},500);
  if(p=='/api/login'&&m=='POST'){const b=await req.json();return b.password===env.ADMIN_PASSWORD?J({token:await tok(env)}):J({error:'Wrong password'},401)}
  if((req.headers.get('authorization')||'')!='Bearer '+await tok(env))return J({error:'Unauthorized'},401);
+ await env.DB.prepare('ALTER TABLE products ADD COLUMN aid INTEGER').run().catch(()=>{});
+ if(p=='/api/article'&&m=='GET')return J(await env.DB.prepare('SELECT * FROM articles WHERE id=?').bind(u.searchParams.get('id')).first());
  if(p=='/api/data'){const s=Object.fromEntries((await all(env,'SELECT k,v FROM settings')).map(x=>[x.k,x.v]));return J({arts:await all(env,'SELECT id,title,sec,slug FROM articles ORDER BY created DESC LIMIT 100'),prods:await all(env,'SELECT * FROM products ORDER BY id DESC LIMIT 200'),s,secs:S.map(x=>[x[0],x[1]])})}
- if(p=='/api/article'&&m=='POST'){const b=await req.json();if(!b.title||!b.body)return J({error:'Title and content required'},400);
+ if(p=='/api/article'&&m=='POST'){const b=await req.json();if(!b.title)return J({error:'Title required'},400);
+  if(b.id){await env.DB.prepare('UPDATE articles SET sec=?,title=?,img=?,body=?,faq=? WHERE id=?').bind(b.sec,b.title,b.img||'',b.body||'',JSON.stringify(b.faq||[]),b.id).run();return J({ok:1})}
   const slug=b.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)+'-'+Date.now().toString(36);
-  await env.DB.prepare('INSERT INTO articles(slug,sec,title,img,body,faq,created) VALUES(?,?,?,?,?,?,?)').bind(slug,b.sec,b.title,b.img||'',b.body,JSON.stringify(b.faq||[]),Date.now()).run();return J({ok:1,slug})}
+  await env.DB.prepare('INSERT INTO articles(slug,sec,title,img,body,faq,created) VALUES(?,?,?,?,?,?,?)').bind(slug,b.sec,b.title,b.img||'',b.body||'',JSON.stringify(b.faq||[]),Date.now()).run();return J({ok:1,slug})}
  if(p=='/api/article'&&m=='DELETE'){await env.DB.prepare('DELETE FROM articles WHERE id=?').bind(u.searchParams.get('id')).run();return J({ok:1})}
- if(p=='/api/product'&&m=='POST'){const b=await req.json();if(!b.name)return J({error:'Name required'},400);await env.DB.prepare('INSERT INTO products(sec,name,price,img,link) VALUES(?,?,?,?,?)').bind(b.sec,b.name,b.price||'',b.img||'',b.link||'#').run();return J({ok:1})}
+ if(p=='/api/product'&&m=='POST'){const b=await req.json();if(!b.name)return J({error:'Name required'},400);await env.DB.prepare('INSERT INTO products(sec,name,price,img,link,aid) VALUES(?,?,?,?,?,?)').bind(b.sec,b.name,b.price||'',b.img||'',b.link||'#',b.aid?+b.aid:null).run();return J({ok:1})}
  if(p=='/api/product'&&m=='DELETE'){await env.DB.prepare('DELETE FROM products WHERE id=?').bind(u.searchParams.get('id')).run();return J({ok:1})}
  if(p=='/api/settings'&&m=='POST'){const b=await req.json();for(const k of['head','top','inart','ads_txt'])await env.DB.prepare('INSERT OR REPLACE INTO settings(k,v) VALUES(?,?)').bind(k,b[k]||'').run();return J({ok:1})}
  if(p=='/api/upload'&&m=='POST'){const key=Date.now().toString(36)+Math.random().toString(36).slice(2,6);await env.BUCKET.put(key,req.body,{httpMetadata:{contentType:req.headers.get('content-type')||'image/jpeg'}});return J({url:'/img/'+key})}
